@@ -16,7 +16,8 @@ hypervisor.bin: $(OBJ)
 	$(OBJCOPY) -O binary hypervisor.elf hypervisor.bin
 
 run: hypervisor.bin
-	qemu-system-aarch64 -M raspi3b -kernel hypervisor.bin -nographic
+	qemu-system-aarch64 -machine virt,virtualization=on -cpu cortex-a53 -kernel hypervisor.elf -nographic -serial mon:stdio
+	
 
 clean:
 	rm -f src/*.o hypervisor.elf hypervisor.bin
