@@ -1,0 +1,13 @@
+BARE-METAL HYPERVISOR FOR RASPBERRY-3
+
+CPU: ARM Cortex-A53 (ARMv8-A, 64-bit)
+
+goal:
+You’ll be creating:
+- A minimal build environment (cross-compiler, linker script, startup code)
+- A bare-metal kernel that sets up:
+	- Exception levels
+	- MMU, page tables
+	- UART for I/O
+- Basic hypervisor functionality (trap handling, guest VM launch)
+- QEMU test setup to simulate the hardware
