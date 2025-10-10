@@ -3,21 +3,33 @@ CC = $(CROSS)gcc
 LD = $(CROSS)ld
 OBJCOPY = $(CROSS)objcopy
 
-CFLAGS = -Wall -O2 -ffreestanding -nostdlib -nostartfiles -mgeneral-regs-only -Iinclude
+CFLAGS = -Wall -O2 -ffreestanding -nostdlib -Iinclude
 
-SRC = $(wildcard src/*.c)
-ASM = $(wildcard src/*.S)
-OBJ = $(SRC:.c=.o) $(ASM:.S=.o)
+# Source files
+C_SRC = src/main.c src/uart.c src/guest.c
+S_SRC = src/start.S src/el2_to_el1.S
+
+# Object files
+OBJ = $(C_SRC:.c=.o) $(S_SRC:.S=.o)
+
+# Compile C files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Compile assembly files
+%.o: %.S
+	$(CC) $(CFLAGS) -c $< -o $@
 
 all: hypervisor.bin
 
-hypervisor.bin: $(OBJ)
+hypervisor.elf: $(OBJ)
 	$(LD) -T linker.ld -o hypervisor.elf $(OBJ)
+
+hypervisor.bin: hypervisor.elf
 	$(OBJCOPY) -O binary hypervisor.elf hypervisor.bin
 
-run: hypervisor.bin
+run: hypervisor.elf
 	qemu-system-aarch64 -machine virt,virtualization=on -cpu cortex-a53 -kernel hypervisor.elf -nographic -serial mon:stdio
-	
 
 clean:
 	rm -f src/*.o hypervisor.elf hypervisor.bin
