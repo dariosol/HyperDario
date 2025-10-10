@@ -1,39 +1,40 @@
-BARE-METAL HYPERVISOR FOR RASPBERRY-3
+BARE-METAL HYPERVISOR FOR ARM
+
+
+
 
 CPU: ARM Cortex-A53 (ARMv8-A, 64-bit)
 
-goal:
-You’ll be creating:
+GOAL:
 - A minimal build environment (cross-compiler, linker script, startup code)
 - A bare-metal kernel that sets up:
 	- Exception levels
-	- MMU, page tables
+	- MMU, page tables (still to be done)
 	- UART for I/O
 - Basic hypervisor functionality (trap handling, guest VM launch)
-- QEMU test setup to simulate the hardware
+
+Use QEMU setup to simulate the hardware
 
 
 REQUIREMENTS:
 sudo apt install gcc-aarch64-linux-gnu qemu-system-aarch64 make
 sudo apt install gdb-multiarch
 
-STRUCTURE: 
-hypervisor/
-├── Makefile
-├── linker.ld
-├── src/
-│   ├── main.c
-│   ├── start.S
-│   ├── uart.c
-│   ├── mmu.c
-│   └── traps.c
-└── include/
-    ├── uart.h
-    ├── mmu.h
-    └── traps.h
-    
-    
+start.S defines the hypervisor L2 stack (the main function)
+el2_to_el1.S allows to switch from EL2 (Hyp space) to EL1(kernel space)
 
+in EL1 stack the guest.c program runs.
+
+stuff for uart here and there. Baseaddress for uart are the one for generic arm cpu in qemu
+
+===================================================
+To make:
+make
+make run
+====================================================
+
+make run in qemu:
+    qemu-system-aarch64 -machine virt,virtualization=on -cpu cortex-a53 -kernel hypervisor.elf -nographic -serial mon:stdio
 
 ====================================================
 
@@ -57,7 +58,7 @@ Transition Steps:
 2. Set HCR_EL2 (EL1 AArch64)
 3. Set SPSR_EL2 (EL1h, interrupts enabled)
 4. Set ELR_EL2 = guest_main
-5. DSB + ISB
+5. DSB + ISB -> Barriers to guarantee the registers have been written before going on
 6. eret
 
 
