@@ -1,61 +1,82 @@
-Bare-Metal Hypervisor for ARM
+# Bare-Metal Hypervisor for ARM
 
-Target CPU: ARM Cortex-A53 (ARMv8-A, 64-bit)
+**Target CPU:** ARM Cortex-A53 (ARMv8-A, 64-bit)
 
-Goal
+---
+
+## Goal
 
 This project implements a minimal bare-metal hypervisor environment with the following features:
 
-Build environment: Cross-compiler, linker scripts, and startup code
+* **Build environment**: Cross-compiler, linker scripts, and startup code
+* **Bare-metal kernel** setup including:
 
-Bare-metal kernel setup including:
+  * Exception levels
+  * MMU and page tables (work in progress)
+  * UART for I/O
+* **Basic hypervisor functionality**:
 
-Exception levels
-
-MMU and page tables (work in progress)
-
-UART for I/O
-
-Basic hypervisor functionality:
-
-Trap handling
-
-Guest VM launch
+  * Trap handling
+  * Guest VM launch
 
 The hypervisor can be tested using a QEMU setup to simulate the hardware.
 
-Requirements
+---
+
+## Requirements
 
 Install the following dependencies on a Linux system:
 
+```bash
 sudo apt install gcc-aarch64-linux-gnu qemu-system-aarch64 make
 sudo apt install gdb-multiarch
+```
 
-Key Source Files
-File	Purpose
-start.S	Defines the hypervisor L2 stack (main function)
-el2_to_el1.S	Switches from EL2 (Hypervisor) to EL1 (Guest kernel)
-guest.c	Runs in EL1 stack (guest program)
-UART code	Base addresses correspond to generic ARM CPU in QEMU
-Build & Run
-Build
+---
+
+## Key Source Files
+
+| File           | Purpose                                              |
+| -------------- | ---------------------------------------------------- |
+| `start.S`      | Defines the hypervisor L2 stack (main function)      |
+| `el2_to_el1.S` | Switches from EL2 (Hypervisor) to EL1 (Guest kernel) |
+| `guest.c`      | Runs in EL1 stack (guest program)                    |
+| UART code      | Base addresses correspond to generic ARM CPU in QEMU |
+
+---
+
+## Build & Run
+
+### Build
+
+```bash
 make
+```
 
-Run in QEMU
+### Run in QEMU
+
+```bash
 make run
-
+```
 
 or directly:
 
+```bash
 qemu-system-aarch64 \
     -machine virt,virtualization=on \
     -cpu cortex-a53 \
     -kernel hypervisor.elf \
     -nographic \
     -serial mon:stdio
+```
 
-CPU State Transition
-Before enter_el1 (CPU in EL2)
+---
+
+## CPU State Transition
+
+### Before `enter_el1` (CPU in EL2)
+
+```
 ─────────────────────────────
 EL2 (Hypervisor)
 ─────────────────────────────
@@ -67,23 +88,22 @@ SPSR_EL2  -> undefined
 ELR_EL2   -> undefined
 Other regs -> guest and hypervisor can share general-purpose registers
 Stack:     [hypervisor stack memory]
+```
 
+**Transition Steps to EL1:**
 
-Transition Steps to EL1:
+1. Load `_el1_stack_top` into `SP_EL1`
+2. Set `HCR_EL2` (EL1 AArch64)
+3. Set `SPSR_EL2` (EL1h, interrupts enabled)
+4. Set `ELR_EL2 = guest_main`
+5. `DSB + ISB` → Ensure registers are updated
+6. `eret` → Switch to EL1
 
-Load _el1_stack_top into SP_EL1
+---
 
-Set HCR_EL2 (EL1 AArch64)
+### After `eret` (CPU in EL1)
 
-Set SPSR_EL2 (EL1h, interrupts enabled)
-
-Set ELR_EL2 = guest_main
-
-DSB + ISB → Ensure registers are updated
-
-eret → Switch to EL1
-
-After eret (CPU in EL1)
+```
 ─────────────────────────────
 EL1 (Guest)
 ─────────────────────────────
@@ -94,13 +114,16 @@ CurrentEL -> 1 (EL1)
 SPSR_EL1  -> EL1h, IRQ/FIQ enabled
 Other regs -> inherited from before eret or as set by guest
 Stack:     [guest stack memory]
+```
 
+* Hypervisor (EL2) still exists in the background.
+* Any EL1 exception (SVC, IRQ) switches the CPU back to EL2.
 
-Hypervisor (EL2) still exists in the background.
+---
 
-Any EL1 exception (SVC, IRQ) switches the CPU back to EL2.
+### CPU State Diagram
 
-CPU State Diagram
+```
           ┌───────────────┐
           │   EL2 (HV)    │
           │───────────────│
@@ -119,3 +142,4 @@ CPU State Diagram
           │ PC             │  Points to guest_main
           │ SPSR_EL1       │  EL1h, IRQ/FIQ enabled
           └───────────────┘
+```
