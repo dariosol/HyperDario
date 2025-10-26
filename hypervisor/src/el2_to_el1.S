@@ -8,10 +8,10 @@ enter_el1:
     msr SP_EL1, x1
 
     // --- Configure HCR_EL2 ---
-    // RW = 1 (EL1 executes AArch64)
-    // Other bits cleared for minimal setup
-    mov x2, #(1 << 31)
-    msr HCR_EL2, x2
+    // RW=1 (EL1 executes AArch64), IMO/FMO/AMO=1 (trap interrupts/exceptions)
+    mov x2, #(7 << 3)
+    movk x2, #0x8000, lsl #16   // set bit 31 (RW=1)
+    msr  HCR_EL2, x2
 
     // --- Configure SPSR_EL2 ---
     // EL1h (mode bits M[3:0] = 0b0101)

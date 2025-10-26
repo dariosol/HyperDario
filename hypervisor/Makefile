@@ -6,8 +6,8 @@ OBJCOPY = $(CROSS)objcopy
 CFLAGS = -Wall -O2 -ffreestanding -nostdlib -Iinclude
 
 # Source files
-C_SRC = src/main.c src/uart.c src/guest.c
-S_SRC = src/start.S src/el2_to_el1.S
+C_SRC = src/main.c src/uart.c src/trap.c src/guest.c
+S_SRC = src/start.S src/vec_el2.S src/el2_to_el1.S 
 
 # Object files
 OBJ = $(C_SRC:.c=.o) $(S_SRC:.S=.o)
