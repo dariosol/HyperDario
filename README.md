@@ -143,3 +143,64 @@ Stack:     [guest stack memory]
           │ SPSR_EL1       │  EL1h, IRQ/FIQ enabled
           └───────────────┘
 ```
+
+## VECTOR TABLES FOR EXCEPTIONS:
+When you set up VBAR_EL2 (Vector Base Address Register), you're pointing to the start of a vector table. This table is a fixed-layout structure of 16 entries, each 0x80 bytes (128 bytes) apart.
+The Four Groups (4 entries each)
+The table is divided into 4 groups based on where the exception came from:
+```
+Offset   | Group Description
+---------|------------------------------------------
+0x000    | Current EL with SP_EL0
+0x080    |   (4 entries: sync, irq, fiq, serror)
+0x100    |
+0x180    |
+---------|------------------------------------------
+0x200    | Current EL with SP_ELx  
+0x280    |   (4 entries: sync, irq, fiq, serror)
+0x300    |
+0x380    |
+---------|------------------------------------------
+0x400    | Lower EL using AArch64  ← YOU NEEDED THIS!
+0x480    |   (4 entries: sync, irq, fiq, serror)
+0x500    |
+0x580    |
+---------|------------------------------------------
+0x600    | Lower EL using AArch32
+0x680    |   (4 entries: sync, irq, fiq, serror)
+0x700    |
+0x780    |
+```
+
+Within each group, the 4 entries handle different exception types:
+
+1. 0x00: Synchronous (like HVC, system calls, data aborts)
+2. 0x80: IRQ (interrupt request)
+3. 0x100: FIQ (fast interrupt)
+4. 0x180: SError (system error, asynchronous abort)
+
+So the complete picture: 4 groups × 4 exception types = 16 entries total, each 0x80 bytes apart, for a total table size of 0x800 (2KB).
+That's why the .align 11 directive is used—it aligns to 2^11 = 2048 bytes, which is the required alignment for the vector table!
+
+
+### What Each Group Means
+Current EL with SP_EL0 (0x000-0x180): Exceptions taken while running at EL2, but using the EL0 stack pointer (rare, special case)
+Current EL with SP_ELx (0x200-0x380): Exceptions taken while running at EL2, using the EL2 stack pointer. This is what you originally had.
+Lower EL using AArch64 (0x400-0x580): Exceptions taken from a lower exception level (EL1 or EL0) running in 64-bit mode. This is where your HVC instruction traps to!
+Lower EL using AArch32 (0x600-0x780): Exceptions from lower ELs running in 32-bit mode (not relevant for this architecture)
+### The Exception Level Ladder
+Think of it as a ladder:
+```
+EL3 (Secure Monitor)     ← smc traps here
+ ↑
+EL2 (Hypervisor)         ← hvc traps here from EL0/EL1
+ ↑
+EL1 (Kernel/Guest OS)    ← svc traps here from EL0
+ ↑
+EL0 (Userspace/Apps)     ← where svc is called from
+```
+SVC vs HVC - Different Target Exception Levels
+
+svc #0 (Supervisor Call) - traps from EL0 -> EL1
+hvc #0 (Hypervisor Call) - traps from EL0/EL1 -> EL2
+smc #0 (Secure Monitor Call) - traps from any EL -> EL3
